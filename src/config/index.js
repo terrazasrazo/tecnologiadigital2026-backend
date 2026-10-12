@@ -57,7 +57,10 @@ export const config = {
     user: process.env.SMTP_USER || '',
     password: process.env.SMTP_PASSWORD || '',
     from: process.env.MAIL_FROM || 'Eventos <no-reply@localhost>',
+    maxRetries: toNumber(process.env.MAIL_MAX_RETRIES, 2),
+    retryDelayMs: toNumber(process.env.MAIL_RETRY_DELAY_MS, 500),
   },
+  appName: process.env.APP_NAME || 'Tecnología Digital',
   tokens: {
     emailVerificationTtlMs: parseDuration(emailVerificationTtl),
     passwordResetTtlMs: parseDuration(passwordResetTtl),

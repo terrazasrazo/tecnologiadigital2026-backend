@@ -4,11 +4,20 @@ import nodemailer from 'nodemailer';
 import ejs from 'ejs';
 import { config } from '../config/index.js';
 import { logger } from '../utils/logger.js';
+import { AppError } from '../middlewares/error.js';
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
-const templatesDir = path.resolve(currentDir, '..', 'emails', 'templates');
+const emailsDir = path.resolve(currentDir, '..', 'emails');
+const templatesDir = path.join(emailsDir, 'templates');
+const layoutsDir = path.join(emailsDir, 'layouts');
 
 let transporter = null;
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export function setTransporter(next) {
+  transporter = next;
+}
 
 function getTransporter() {
   if (transporter) {
@@ -32,20 +41,99 @@ function getTransporter() {
   return transporter;
 }
 
-export async function sendMail({ to, subject, template, context = {} }) {
-  const templatePath = path.join(templatesDir, `${template}.ejs`);
-  const html = await ejs.renderFile(templatePath, context);
+export async function renderTemplate(name, context = {}) {
+  const templatePath = path.join(templatesDir, `${name}.ejs`);
+  return ejs.renderFile(templatePath, { appName: config.appName, ...context });
+}
 
-  const info = await getTransporter().sendMail({
-    from: config.email.from,
-    to,
-    subject,
-    html,
-  });
+async function renderLayout(name, context) {
+  const layoutPath = path.join(layoutsDir, `${name}.ejs`);
+  return ejs.renderFile(layoutPath, context);
+}
 
-  if (!config.email.host) {
-    logger.info({ to, subject, context }, 'Correo generado (modo desarrollo, no enviado)');
+export async function buildHtml({ template, html, layout = 'base', context = {} }) {
+  if (html) {
+    return html;
+  }
+  if (!template) {
+    return null;
   }
 
-  return info;
+  const body = await renderTemplate(template, context);
+  if (!layout) {
+    return body;
+  }
+
+  return renderLayout(layout, { appName: config.appName, ...context, body });
+}
+
+export async function sendMail({
+  to,
+  subject,
+  template,
+  html,
+  layout = 'base',
+  context = {},
+  attachments,
+  cc,
+  bcc,
+  replyTo,
+  headers,
+}) {
+  const finalHtml = await buildHtml({ template, html, layout, context });
+  if (!finalHtml) {
+    throw new AppError('El correo no tiene contenido HTML', 500, 'MAIL_EMPTY_CONTENT');
+  }
+
+  const maxRetries = Math.max(0, config.email.maxRetries);
+  let lastError;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+    try {
+      const info = await getTransporter().sendMail({
+        from: config.email.from,
+        to,
+        cc,
+        bcc,
+        replyTo,
+        subject,
+        html: finalHtml,
+        attachments,
+        headers,
+      });
+
+      if (!config.email.host) {
+        logger.info({ to, subject }, 'Correo generado (modo desarrollo, no enviado)');
+      }
+
+      return info;
+    } catch (error) {
+      lastError = error;
+      const isLastAttempt = attempt === maxRetries;
+      logger.warn(
+        { err: error, attempt: attempt + 1, maxRetries, to, subject, willRetry: !isLastAttempt },
+        'Fallo al enviar el correo',
+      );
+
+      if (!isLastAttempt) {
+        await sleep(config.email.retryDelayMs * (attempt + 1));
+      }
+    }
+  }
+
+  throw new AppError('No se pudo enviar el correo tras varios intentos', 502, 'MAIL_SEND_FAILED', {
+    reason: lastError?.message,
+  });
+}
+
+export async function sendMailSafe(options) {
+  try {
+    return await sendMail(options);
+  } catch (error) {
+    logger.error(
+      { err: error, to: options.to, subject: options.subject },
+      'Envío de correo fallido (no bloqueante)',
+    );
+    return null;
+  }
 }
