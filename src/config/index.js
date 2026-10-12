@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { parseDuration } from '../utils/duration.js';
 
 const toNumber = (value, fallback) => {
   const parsed = Number(value);
@@ -16,6 +17,9 @@ const corsOrigins = (process.env.CORS_ORIGINS || '')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
+
+const jwtAccessTtl = process.env.JWT_ACCESS_TTL || '15m';
+const jwtRefreshTtl = process.env.JWT_REFRESH_TTL || '7d';
 
 export const config = {
   env,
@@ -36,11 +40,19 @@ export const config = {
     password: process.env.DB_PASSWORD || '',
     logging: toBoolean(process.env.DB_LOGGING, false),
   },
+  jwt: {
+    secret: process.env.JWT_SECRET || '',
+    accessTtl: jwtAccessTtl,
+    accessTtlMs: parseDuration(jwtAccessTtl),
+    refreshTtl: jwtRefreshTtl,
+    refreshTtlMs: parseDuration(jwtRefreshTtl),
+  },
 };
 
 export function validateConfig() {
   const missing = [];
   if (!process.env.DB_NAME) missing.push('DB_NAME');
   if (!process.env.DB_USER) missing.push('DB_USER');
+  if (!process.env.JWT_SECRET) missing.push('JWT_SECRET');
   return missing;
 }
