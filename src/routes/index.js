@@ -6,6 +6,7 @@ import { speakersRouter } from '../modules/speakers/routes.js';
 import { locationsRouter } from '../modules/locations/routes.js';
 import { talksRouter } from '../modules/talks/routes.js';
 import { attendanceRouter } from '../modules/attendance/routes.js';
+import { certificatesRouter } from '../modules/certificates/routes.js';
 
 export const routes = Router();
 
@@ -16,3 +17,4 @@ routes.use('/api/speakers', speakersRouter);
 routes.use('/api/locations', locationsRouter);
 routes.use('/api/talks', talksRouter);
 routes.use('/api/attendance', attendanceRouter);
+routes.use('/api/certificates', certificatesRouter);

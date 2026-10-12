@@ -13,4 +13,7 @@ PLAN.md
 storage/uploads/*
 !storage/uploads/.gitkeep
 
+storage/certificates/*
+!storage/certificates/.gitkeep
+
 .DS_Store

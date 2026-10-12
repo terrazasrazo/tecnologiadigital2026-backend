@@ -8,6 +8,7 @@ import { Speaker } from './speaker.js';
 import { Location } from './location.js';
 import { Talk } from './talk.js';
 import { TalkRegistration } from './talk-registration.js';
+import { Certificate } from './certificate.js';
 
 Role.hasMany(User, { foreignKey: 'roleId', as: 'users' });
 User.belongsTo(Role, { foreignKey: 'roleId', as: 'role' });
@@ -45,6 +46,9 @@ TalkRegistration.belongsTo(Talk, { foreignKey: 'talkId', as: 'talk' });
 User.hasMany(TalkRegistration, { foreignKey: 'userId', as: 'registrations' });
 TalkRegistration.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
+User.hasOne(Certificate, { foreignKey: 'userId', as: 'certificate' });
+Certificate.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
 export const db = {
   sequelize,
   Sequelize,
@@ -56,6 +60,7 @@ export const db = {
   Location,
   Talk,
   TalkRegistration,
+  Certificate,
 };
 
 export {
@@ -69,6 +74,7 @@ export {
   Location,
   Talk,
   TalkRegistration,
+  Certificate,
 };
 
 export { ROLE_NAMES } from './role.js';

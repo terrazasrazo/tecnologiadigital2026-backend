@@ -68,6 +68,15 @@ export const config = {
   events: {
     timezoneOffsetMinutes: toNumber(process.env.EVENT_TZ_OFFSET_MINUTES, 0),
   },
+  pdf: {
+    provider: (process.env.PDF_PROVIDER || 'wkhtmltopdf').toLowerCase(),
+    wkhtmltopdfPath: process.env.WKHTMLTOPDF_PATH || 'wkhtmltopdf',
+    gotenbergUrl: (process.env.GOTENBERG_URL || 'http://localhost:3000').replace(/\/$/, ''),
+    timeoutMs: toNumber(process.env.PDF_TIMEOUT_MS, 30000),
+  },
+  certificates: {
+    dir: process.env.CERTIFICATES_DIR || 'storage/certificates',
+  },
 };
 
 export function validateConfig() {

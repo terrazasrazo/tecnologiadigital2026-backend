@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>Constancia — <%= appName %></title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: Arial, Helvetica, sans-serif;
+        color: #1f2933;
+      }
+      .page {
+        padding: 48px 56px;
+        page-break-after: always;
+      }
+      .page:last-child {
+        page-break-after: auto;
+      }
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 2px solid #2563eb;
+        padding-bottom: 12px;
+        margin-bottom: 40px;
+      }
+      .brand {
+        font-size: 18px;
+        font-weight: bold;
+        color: #2563eb;
+      }
+      .code {
+        font-size: 12px;
+        color: #616e7c;
+        text-align: right;
+      }
+      .title {
+        text-align: center;
+        font-size: 30px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: #102a43;
+        margin: 0 0 8px;
+      }
+      .subtitle {
+        text-align: center;
+        font-size: 14px;
+        color: #616e7c;
+        margin: 0 0 44px;
+      }
+      .lead {
+        text-align: center;
+        font-size: 15px;
+        color: #3e4c59;
+        margin: 0 0 8px;
+      }
+      .name {
+        text-align: center;
+        font-size: 26px;
+        font-weight: bold;
+        color: #102a43;
+        margin: 18px 0;
+      }
+      .body-text {
+        font-size: 14px;
+        line-height: 1.7;
+        color: #3e4c59;
+        text-align: justify;
+        margin: 0 auto 28px;
+        max-width: 520px;
+      }
+      .highlight {
+        margin: 36px auto;
+        width: 320px;
+        border: 2px solid #2563eb;
+        border-radius: 8px;
+        padding: 18px;
+        text-align: center;
+      }
+      .highlight .value {
+        font-size: 34px;
+        font-weight: bold;
+        color: #2563eb;
+      }
+      .highlight .label {
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #616e7c;
+      }
+      .meta {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 60px;
+        font-size: 13px;
+        color: #3e4c59;
+      }
+      .signature {
+        margin-top: 72px;
+        text-align: center;
+      }
+      .signature .line {
+        width: 240px;
+        border-top: 1px solid #9aa5b1;
+        margin: 0 auto 8px;
+      }
+      .signature .caption {
+        font-size: 12px;
+        color: #616e7c;
+      }
+      .section-title {
+        font-size: 18px;
+        color: #102a43;
+        margin: 0 0 20px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+      thead th {
+        text-align: left;
+        background-color: #f0f4f8;
+        color: #334e68;
+        padding: 10px 12px;
+        border-bottom: 2px solid #d9e2ec;
+      }
+      td {
+        padding: 10px 12px;
+        border-bottom: 1px solid #e4e7eb;
+        color: #3e4c59;
+        vertical-align: top;
+      }
+      tr.total td {
+        font-weight: bold;
+        color: #102a43;
+        border-top: 2px solid #2563eb;
+        border-bottom: none;
+      }
+      .muted {
+        color: #9aa4b2;
+        font-size: 12px;
+        text-align: center;
+        margin-top: 32px;
+      }
+    </style>
+  </head>
+  <body>
+    <section class="page">
+      <div class="header">
+        <span class="brand"><%= appName %></span>
+        <span class="code">
+          Folio: <strong><%= certificate.code %></strong><br />
+          Emitida: <%= issuedAtLabel %>
+        </span>
+      </div>
+
+      <h1 class="title">Constancia</h1>
+      <p class="subtitle">de participación</p>
+
+      <p class="lead">Se otorga la presente constancia a</p>
+      <p class="name"><%= user.name %> <%= user.lastName %></p>
+
+      <p class="body-text">
+        por su participación como asistente en las actividades académicas de
+        <strong><%= appName %></strong>, acreditando un total de
+        <strong><%= totals.hoursLabel %></strong> distribuidas en
+        <strong><%= totals.talksCount %></strong>
+        <%= totals.talksCount === 1 ? 'ponencia' : 'ponencias' %>.
+        <% if (user.entity) { %>Entidad: <strong><%= user.entity %></strong>.<% } %>
+      </p>
+
+      <div class="highlight">
+        <div><span class="value"><%= totals.hoursValue %></span></div>
+        <div>Horas acreditadas</div>
+      </div>
+
+      <p class="body-text" style="text-align: center; margin-top: 48px;">
+        Se extiende la presente para los fines que al interesado convengan.
+      </p>
+
+      <div class="footer">
+        <div class="code" style="text-align: center;">
+          Código de verificación: <strong><%= certificate.code %></strong>
+        </div>
+      </div>
+    </div>
+
+    <div class="page">
+      <div class="header">
+        <div class="brand"><%= appName %></div>
+        <div class="code">
+          <strong><%= user.name %> <%= user.lastName %></strong><br />
+          Código: <%= certificate.code %>
+        </div>
+      </div>
+
+      <h2 class="title" style="font-size: 22px;">Detalle de ponencias</h2>
+      <p class="subtitle">Ponencias con asistencia acreditada</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Ponencia</th>
+            <th>Fecha</th>
+            <th>Horario</th>
+            <th style="text-align: right;">Duración</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% talks.forEach(function (talk) { %>
+          <tr>
+            <td><%= talk.title %></td>
+            <td><%= talk.dateLabel %></td>
+            <td><%= talk.scheduleLabel %></td>
+            <td style="text-align: right;"><%= talk.durationLabel %></td>
+          </tr>
+          <% }); %>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="3" style="text-align: right; font-weight: bold;">Total</td>
+            <td style="text-align: right; font-weight: bold;"><%= totals.hoursLabel %></td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <p class="body-text" style="margin-top: 40px; text-align: center;">
+        Total de ponencias acreditadas: <strong><%= totals.talksCount %></strong>
+      </p>
+    </div>
+  </body>
+</html>
