@@ -1,4 +1,16 @@
 node_modules/
 dist/
+coverage/
+logs/
+*.log
+
 .env
+.env.*
+!.env.example
+
 PLAN.md
+
+storage/uploads/*
+!storage/uploads/.gitkeep
+
+.DS_Store
