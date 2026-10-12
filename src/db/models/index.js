@@ -4,12 +4,16 @@ import { Role } from './role.js';
 import { User } from './user.js';
 import { Token } from './token.js';
 import { Setting } from './setting.js';
+import { Speaker } from './speaker.js';
 
 Role.hasMany(User, { foreignKey: 'roleId', as: 'users' });
 User.belongsTo(Role, { foreignKey: 'roleId', as: 'role' });
 
 User.hasMany(Token, { foreignKey: 'userId', as: 'tokens' });
 Token.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+User.hasOne(Speaker, { foreignKey: 'userId', as: 'speakerProfile' });
+Speaker.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
 export const db = {
   sequelize,
@@ -18,9 +22,10 @@ export const db = {
   User,
   Token,
   Setting,
+  Speaker,
 };
 
-export { sequelize, Sequelize, Role, User, Token, Setting };
+export { sequelize, Sequelize, Role, User, Token, Setting, Speaker };
 
 export { ROLE_NAMES } from './role.js';
 export { USER_STATUSES } from './user.js';

@@ -1,4 +1,5 @@
 import { ZodError } from 'zod';
+import multer from 'multer';
 import { config } from '../config/index.js';
 import { logger } from '../utils/logger.js';
 
@@ -35,6 +36,16 @@ export function errorHandler(err, req, res, _next) {
         message: err.message,
         ...(err.details !== undefined ? { details: err.details } : {}),
       },
+    });
+  }
+
+  if (err instanceof multer.MulterError) {
+    const message =
+      err.code === 'LIMIT_FILE_SIZE'
+        ? 'El archivo excede el tamaño permitido'
+        : 'Error al subir el archivo';
+    return res.status(400).json({
+      error: { code: err.code, message },
     });
   }
 

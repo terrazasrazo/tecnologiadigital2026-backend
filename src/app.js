@@ -4,6 +4,7 @@ import cors from 'cors';
 import pinoHttp from 'pino-http';
 import { config } from './config/index.js';
 import { logger } from './utils/logger.js';
+import { storage } from './services/storage.service.js';
 import { routes } from './routes/index.js';
 import { notFoundHandler, errorHandler, AppError } from './middlewares/error.js';
 
@@ -34,6 +35,14 @@ export function createApp() {
   app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
   app.use(pinoHttp({ logger, autoLogging: { ignore: (req) => req.url === '/health' } }));
+
+  app.use(
+    storage.publicPath,
+    express.static(storage.root, {
+      maxAge: config.isProduction ? '7d' : 0,
+      index: false,
+    }),
+  );
 
   app.use(routes);
 
