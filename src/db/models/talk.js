@@ -44,6 +44,18 @@ Talk.init(
       allowNull: false,
       defaultValue: TALK_STATUSES.scheduled,
     },
+    attendanceOpensAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    attendanceClosesAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    qrSecret: {
+      type: DataTypes.STRING(64),
+      allowNull: true,
+    },
     createdBy: {
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: true,

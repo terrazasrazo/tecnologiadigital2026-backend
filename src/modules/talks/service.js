@@ -1,8 +1,11 @@
+import crypto from 'node:crypto';
 import { Op } from 'sequelize';
-import { Talk, Speaker, Location, TALK_STATUSES } from '../../db/models/index.js';
+import { Talk, Speaker, Location, TALK_STATUSES, SETTING_KEYS } from '../../db/models/index.js';
 import { storage } from '../../services/storage.service.js';
+import { getNumberSetting } from '../../services/settings.service.js';
+import { config } from '../../config/index.js';
 import { AppError } from '../../middlewares/error.js';
-import { durationMinutes, rangesOverlap } from '../../utils/time.js';
+import { durationMinutes, rangesOverlap, toDateTime, addMinutes } from '../../utils/time.js';
 
 const include = [
   { association: 'location' },
@@ -21,6 +24,10 @@ function serializeSpeaker(speaker) {
 
 function serialize(talk) {
   const data = talk.toJSON();
+  const opensAt = data.attendanceOpensAt ? new Date(data.attendanceOpensAt) : null;
+  const closesAt = data.attendanceClosesAt ? new Date(data.attendanceClosesAt) : null;
+  const now = Date.now();
+
   return {
     id: data.id,
     title: data.title,
@@ -40,6 +47,11 @@ function serialize(talk) {
         }
       : null,
     speakers: (data.speakers ?? []).map(serializeSpeaker),
+    attendanceWindow: {
+      opensAt: opensAt ? opensAt.toISOString() : null,
+      closesAt: closesAt ? closesAt.toISOString() : null,
+      isOpen: Boolean(opensAt && closesAt && now >= opensAt.getTime() && now <= closesAt.getTime()),
+    },
     createdAt: data.createdAt,
     updatedAt: data.updatedAt,
   };
@@ -93,6 +105,17 @@ async function assertNoOverlap({ locationId, date, startTime, endTime, status, e
   }
 }
 
+async function resolveAttendanceWindow({ date, endTime, opensAt, closesAt }) {
+  const opensBefore = await getNumberSetting(SETTING_KEYS.attendanceOpensBeforeEndMinutes, 20);
+  const closesAfter = await getNumberSetting(SETTING_KEYS.attendanceClosesAfterEndMinutes, 10);
+  const end = toDateTime(date, endTime, config.events.timezoneOffsetMinutes);
+
+  return {
+    attendanceOpensAt: opensAt ? new Date(opensAt) : addMinutes(end, -opensBefore),
+    attendanceClosesAt: closesAt ? new Date(closesAt) : addMinutes(end, closesAfter),
+  };
+}
+
 export async function listTalks(query) {
   const { page, pageSize, search, date, locationId, status } = query;
   const where = {};
@@ -138,6 +161,13 @@ export async function createTalk(data, requester) {
     status,
   });
 
+  const window = await resolveAttendanceWindow({
+    date: data.date,
+    endTime: data.endTime,
+    opensAt: data.attendanceOpensAt,
+    closesAt: data.attendanceClosesAt,
+  });
+
   const talk = await Talk.create({
     title: data.title,
     description: data.description ?? null,
@@ -146,6 +176,8 @@ export async function createTalk(data, requester) {
     endTime: data.endTime,
     locationId: data.locationId ?? null,
     status,
+    ...window,
+    qrSecret: crypto.randomBytes(24).toString('hex'),
     createdBy: requester.id,
   });
 
@@ -167,6 +199,26 @@ export async function updateTalk(id, data, _requester) {
   }
   if (data.locationId !== undefined) {
     updates.locationId = data.locationId ?? null;
+  }
+
+  if (
+    data.attendanceOpensAt !== undefined ||
+    data.attendanceClosesAt !== undefined ||
+    updates.date !== undefined ||
+    updates.endTime !== undefined
+  ) {
+    const window = await resolveAttendanceWindow({
+      date: updates.date ?? talk.date,
+      endTime: updates.endTime ?? talk.endTime,
+      opensAt: data.attendanceOpensAt,
+      closesAt: data.attendanceClosesAt,
+    });
+    updates.attendanceOpensAt = window.attendanceOpensAt;
+    updates.attendanceClosesAt = window.attendanceClosesAt;
+  }
+
+  if (!talk.qrSecret) {
+    updates.qrSecret = crypto.randomBytes(24).toString('hex');
   }
 
   const nextStart = updates.startTime ?? talk.startTime;

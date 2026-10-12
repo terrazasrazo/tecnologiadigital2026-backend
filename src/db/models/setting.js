@@ -5,6 +5,8 @@ export const SETTING_KEYS = {
   certificateMetric: 'certificate.metric',
   certificateMinTalks: 'certificate.minTalks',
   certificateMinHours: 'certificate.minHours',
+  attendanceOpensBeforeEndMinutes: 'attendance.opensBeforeEndMinutes',
+  attendanceClosesAfterEndMinutes: 'attendance.closesAfterEndMinutes',
 };
 
 export class Setting extends Model {}

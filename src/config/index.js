@@ -62,6 +62,9 @@ export const config = {
     emailVerificationTtlMs: parseDuration(emailVerificationTtl),
     passwordResetTtlMs: parseDuration(passwordResetTtl),
   },
+  events: {
+    timezoneOffsetMinutes: toNumber(process.env.EVENT_TZ_OFFSET_MINUTES, 0),
+  },
 };
 
 export function validateConfig() {

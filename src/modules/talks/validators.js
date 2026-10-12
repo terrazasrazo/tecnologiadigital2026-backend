@@ -32,6 +32,14 @@ const optionalSpeakerIds = z.preprocess((value) => {
   return Array.isArray(value) ? value : [value];
 }, z.array(z.coerce.number().int().positive()).max(50).optional());
 
+const optionalDateTime = z.preprocess(
+  (value) => (value === '' || value === null || value === undefined ? undefined : value),
+  z
+    .string()
+    .refine((value) => !Number.isNaN(Date.parse(value)), 'Fecha y hora inválida')
+    .optional(),
+);
+
 export const createTalkSchema = z
   .object({
     title: z.string().trim().min(1, 'El título es obligatorio').max(200),
@@ -42,6 +50,8 @@ export const createTalkSchema = z
     locationId: optionalNumberId,
     status: z.enum(Object.values(TALK_STATUSES)).optional(),
     speakerIds: optionalSpeakerIds,
+    attendanceOpensAt: optionalDateTime,
+    attendanceClosesAt: optionalDateTime,
   })
   .superRefine((data, ctx) => {
     if (data.endTime <= data.startTime) {
@@ -65,6 +75,8 @@ export const updateTalkSchema = z.object({
   locationId: optionalNumberId,
   status: z.enum(Object.values(TALK_STATUSES)).optional(),
   speakerIds: optionalSpeakerIds,
+  attendanceOpensAt: optionalDateTime,
+  attendanceClosesAt: optionalDateTime,
 });
 
 export const listTalksQuerySchema = z.object({

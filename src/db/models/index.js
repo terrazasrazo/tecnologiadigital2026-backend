@@ -7,6 +7,7 @@ import { Setting } from './setting.js';
 import { Speaker } from './speaker.js';
 import { Location } from './location.js';
 import { Talk } from './talk.js';
+import { TalkRegistration } from './talk-registration.js';
 
 Role.hasMany(User, { foreignKey: 'roleId', as: 'users' });
 User.belongsTo(Role, { foreignKey: 'roleId', as: 'role' });
@@ -38,6 +39,12 @@ Speaker.belongsToMany(Talk, {
   timestamps: false,
 });
 
+Talk.hasMany(TalkRegistration, { foreignKey: 'talkId', as: 'registrations' });
+TalkRegistration.belongsTo(Talk, { foreignKey: 'talkId', as: 'talk' });
+
+User.hasMany(TalkRegistration, { foreignKey: 'userId', as: 'registrations' });
+TalkRegistration.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
 export const db = {
   sequelize,
   Sequelize,
@@ -48,14 +55,27 @@ export const db = {
   Speaker,
   Location,
   Talk,
+  TalkRegistration,
 };
 
-export { sequelize, Sequelize, Role, User, Token, Setting, Speaker, Location, Talk };
+export {
+  sequelize,
+  Sequelize,
+  Role,
+  User,
+  Token,
+  Setting,
+  Speaker,
+  Location,
+  Talk,
+  TalkRegistration,
+};
 
 export { ROLE_NAMES } from './role.js';
 export { USER_STATUSES } from './user.js';
 export { TOKEN_TYPES } from './token.js';
 export { SETTING_KEYS } from './setting.js';
 export { TALK_STATUSES } from './talk.js';
+export { REGISTRATION_STATUSES } from './talk-registration.js';
 
 export default db;
