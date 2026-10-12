@@ -20,6 +20,8 @@ const corsOrigins = (process.env.CORS_ORIGINS || '')
 
 const jwtAccessTtl = process.env.JWT_ACCESS_TTL || '15m';
 const jwtRefreshTtl = process.env.JWT_REFRESH_TTL || '7d';
+const emailVerificationTtl = process.env.EMAIL_VERIFICATION_TTL || '24h';
+const passwordResetTtl = process.env.PASSWORD_RESET_TTL || '1h';
 
 export const config = {
   env,
@@ -28,6 +30,7 @@ export const config = {
   port: toNumber(process.env.PORT, 3000),
   host: process.env.HOST || '0.0.0.0',
   logLevel: process.env.LOG_LEVEL || (env === 'production' ? 'info' : 'debug'),
+  frontendUrl: (process.env.FRONTEND_URL || 'http://localhost:4321').replace(/\/$/, ''),
   cors: {
     origins: corsOrigins,
   },
@@ -46,6 +49,18 @@ export const config = {
     accessTtlMs: parseDuration(jwtAccessTtl),
     refreshTtl: jwtRefreshTtl,
     refreshTtlMs: parseDuration(jwtRefreshTtl),
+  },
+  email: {
+    host: process.env.SMTP_HOST || '',
+    port: toNumber(process.env.SMTP_PORT, 587),
+    secure: toBoolean(process.env.SMTP_SECURE, false),
+    user: process.env.SMTP_USER || '',
+    password: process.env.SMTP_PASSWORD || '',
+    from: process.env.MAIL_FROM || 'Eventos <no-reply@localhost>',
+  },
+  tokens: {
+    emailVerificationTtlMs: parseDuration(emailVerificationTtl),
+    passwordResetTtlMs: parseDuration(passwordResetTtl),
   },
 };
 

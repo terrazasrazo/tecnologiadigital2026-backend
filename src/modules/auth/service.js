@@ -1,13 +1,20 @@
 import { config } from '../../config/index.js';
-import { User, USER_STATUSES } from '../../db/models/index.js';
-import { comparePassword } from '../../utils/password.js';
+import { User, Role, USER_STATUSES, ROLE_NAMES, TOKEN_TYPES } from '../../db/models/index.js';
+import { hashPassword, comparePassword } from '../../utils/password.js';
 import { signAccessToken } from '../../utils/jwt.js';
 import { AppError } from '../../middlewares/error.js';
 import {
   issueRefreshToken,
   consumeRefreshToken,
   revokeRefreshToken,
+  issueUserToken,
+  consumeUserToken,
+  revokeAllUserTokens,
 } from '../../services/token.service.js';
+import {
+  sendVerificationEmail,
+  sendPasswordResetEmail,
+} from '../../services/notifications.service.js';
 
 function buildTokens(user) {
   const accessToken = signAccessToken({
@@ -65,6 +72,96 @@ export async function logout({ refreshToken }) {
   if (refreshToken) {
     await revokeRefreshToken(refreshToken);
   }
+
+  return { success: true };
+}
+
+export async function register(data) {
+  const existing = await User.findOne({ where: { email: data.email } });
+  if (existing) {
+    throw new AppError('El correo ya está registrado', 409, 'EMAIL_IN_USE');
+  }
+
+  const asistente = await Role.findOne({ where: { name: ROLE_NAMES.asistente } });
+  const passwordHash = await hashPassword(data.password);
+
+  const user = await User.create({
+    name: data.name,
+    lastName: data.lastName,
+    email: data.email,
+    passwordHash,
+    entity: data.entity ?? null,
+    educationLevel: data.educationLevel ?? null,
+    phone: data.phone ?? null,
+    roleId: asistente.id,
+    status: USER_STATUSES.pending,
+  });
+
+  const token = await issueUserToken(
+    user.id,
+    TOKEN_TYPES.emailVerification,
+    config.tokens.emailVerificationTtlMs,
+  );
+  await sendVerificationEmail(user, token);
+
+  return {
+    user: { id: user.id, name: user.name, email: user.email, status: user.status },
+  };
+}
+
+export async function resendVerification({ email }) {
+  const user = await User.findOne({ where: { email } });
+
+  if (user && user.status === USER_STATUSES.pending) {
+    await revokeAllUserTokens(user.id, TOKEN_TYPES.emailVerification);
+    const token = await issueUserToken(
+      user.id,
+      TOKEN_TYPES.emailVerification,
+      config.tokens.emailVerificationTtlMs,
+    );
+    await sendVerificationEmail(user, token);
+  }
+
+  return { success: true };
+}
+
+export async function verifyEmail({ token }) {
+  const record = await consumeUserToken(token, TOKEN_TYPES.emailVerification);
+  const user = record.user;
+
+  if (!user.emailVerifiedAt) {
+    await user.update({
+      status: USER_STATUSES.active,
+      emailVerifiedAt: new Date(),
+    });
+  }
+
+  return { success: true };
+}
+
+export async function forgotPassword({ email }) {
+  const user = await User.findOne({ where: { email } });
+
+  if (user && user.status === USER_STATUSES.active) {
+    await revokeAllUserTokens(user.id, TOKEN_TYPES.passwordReset);
+    const token = await issueUserToken(
+      user.id,
+      TOKEN_TYPES.passwordReset,
+      config.tokens.passwordResetTtlMs,
+    );
+    await sendPasswordResetEmail(user, token);
+  }
+
+  return { success: true };
+}
+
+export async function resetPassword({ token, password }) {
+  const record = await consumeUserToken(token, TOKEN_TYPES.passwordReset);
+  const user = record.user;
+
+  user.passwordHash = await hashPassword(password);
+  await user.save();
+  await revokeAllUserTokens(user.id, TOKEN_TYPES.refresh);
 
   return { success: true };
 }

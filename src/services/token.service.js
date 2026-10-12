@@ -24,6 +24,43 @@ export async function issueRefreshToken(userId) {
   return rawToken;
 }
 
+export async function issueUserToken(userId, type, ttlMs) {
+  const rawToken = generateOpaqueToken();
+
+  await Token.create({
+    userId,
+    tokenHash: hashToken(rawToken),
+    type,
+    expiresAt: new Date(Date.now() + ttlMs),
+  });
+
+  return rawToken;
+}
+
+export async function consumeUserToken(rawToken, type) {
+  const token = await Token.findOne({
+    where: { tokenHash: hashToken(rawToken), type },
+    include: [{ model: User, as: 'user', include: [{ association: 'role' }] }],
+  });
+
+  if (!token) {
+    throw new AppError('Token inválido', 400, 'INVALID_TOKEN');
+  }
+
+  if (token.usedAt) {
+    throw new AppError('El token ya fue utilizado', 400, 'TOKEN_ALREADY_USED');
+  }
+
+  if (token.expiresAt.getTime() < Date.now()) {
+    throw new AppError('El token ha expirado', 400, 'TOKEN_EXPIRED');
+  }
+
+  token.usedAt = new Date();
+  await token.save();
+
+  return token;
+}
+
 export async function consumeRefreshToken(rawToken) {
   const token = await Token.findOne({
     where: { tokenHash: hashToken(rawToken), type: TOKEN_TYPES.refresh },

@@ -5,7 +5,11 @@ export function validate(schema, source = 'body') {
     const result = schema.safeParse(req[source]);
 
     if (result.success) {
-      req[source] = result.data;
+      if (source === 'query') {
+        req.validatedQuery = result.data;
+      } else {
+        req[source] = result.data;
+      }
       return next();
     }
 
