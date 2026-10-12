@@ -5,6 +5,8 @@ import { User } from './user.js';
 import { Token } from './token.js';
 import { Setting } from './setting.js';
 import { Speaker } from './speaker.js';
+import { Location } from './location.js';
+import { Talk } from './talk.js';
 
 Role.hasMany(User, { foreignKey: 'roleId', as: 'users' });
 User.belongsTo(Role, { foreignKey: 'roleId', as: 'role' });
@@ -15,6 +17,27 @@ Token.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 User.hasOne(Speaker, { foreignKey: 'userId', as: 'speakerProfile' });
 Speaker.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
+Location.hasMany(Talk, { foreignKey: 'locationId', as: 'talks' });
+Talk.belongsTo(Location, { foreignKey: 'locationId', as: 'location' });
+
+User.hasMany(Talk, { foreignKey: 'createdBy', as: 'createdTalks' });
+Talk.belongsTo(User, { foreignKey: 'createdBy', as: 'creator' });
+
+Talk.belongsToMany(Speaker, {
+  through: 'talk_speakers',
+  foreignKey: 'talkId',
+  otherKey: 'speakerId',
+  as: 'speakers',
+  timestamps: false,
+});
+Speaker.belongsToMany(Talk, {
+  through: 'talk_speakers',
+  foreignKey: 'speakerId',
+  otherKey: 'talkId',
+  as: 'talks',
+  timestamps: false,
+});
+
 export const db = {
   sequelize,
   Sequelize,
@@ -23,13 +46,16 @@ export const db = {
   Token,
   Setting,
   Speaker,
+  Location,
+  Talk,
 };
 
-export { sequelize, Sequelize, Role, User, Token, Setting, Speaker };
+export { sequelize, Sequelize, Role, User, Token, Setting, Speaker, Location, Talk };
 
 export { ROLE_NAMES } from './role.js';
 export { USER_STATUSES } from './user.js';
 export { TOKEN_TYPES } from './token.js';
 export { SETTING_KEYS } from './setting.js';
+export { TALK_STATUSES } from './talk.js';
 
 export default db;
