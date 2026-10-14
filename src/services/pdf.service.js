@@ -1,8 +1,17 @@
 import { spawn } from 'node:child_process';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { config } from '../config/index.js';
 import { AppError } from '../middlewares/error.js';
 
-function renderWithWkhtmltopdf(html) {
+async function renderWithWkhtmltopdf(html) {
+  // wkhtmltopdf no puede escribir el PDF cuando stdout es un socket AF_UNIX
+  // (lo que crea spawn() de Node con stdio 'pipe'): falla con "QPainter::begin():
+  // Returned false". Se renderiza a un fichero temporal y se lee al terminar.
+  const workDir = await mkdtemp(path.join(tmpdir(), 'wkhtmltopdf-'));
+  const outPath = path.join(workDir, 'out.pdf');
+
   const args = [
     '--quiet',
     '--encoding',
@@ -17,65 +26,79 @@ function renderWithWkhtmltopdf(html) {
     '--margin-right',
     '14mm',
     '-',
-    '-',
+    outPath,
   ];
 
-  return new Promise((resolve, reject) => {
-    const child = spawn(config.pdf.wkhtmltopdfPath, args, { stdio: ['pipe', 'pipe', 'pipe'] });
-    const stdout = [];
-    const stderr = [];
-    let settled = false;
+  try {
+    return await new Promise((resolve, reject) => {
+      const child = spawn(config.pdf.wkhtmltopdfPath, args, {
+        stdio: ['pipe', 'ignore', 'pipe'],
+      });
+      const stderr = [];
+      let settled = false;
 
-    const finalize = (error, result) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      if (error) reject(error);
-      else resolve(result);
-    };
+      const finalize = (error, result) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        if (error) reject(error);
+        else resolve(result);
+      };
 
-    const timer = setTimeout(() => {
-      child.kill('SIGKILL');
-      finalize(new AppError('La generación del PDF excedió el tiempo límite', 504, 'PDF_TIMEOUT'));
-    }, config.pdf.timeoutMs);
+      const timer = setTimeout(() => {
+        child.kill('SIGKILL');
+        finalize(new AppError('La generación del PDF excedió el tiempo límite', 504, 'PDF_TIMEOUT'));
+      }, config.pdf.timeoutMs);
 
-    child.on('error', (error) => {
-      if (error.code === 'ENOENT') {
-        finalize(
-          new AppError(
-            `No se encontró el ejecutable de wkhtmltopdf ("${config.pdf.wkhtmltopdfPath}"). Instálalo o define WKHTMLTOPDF_PATH.`,
-            500,
-            'PDF_PROVIDER_UNAVAILABLE',
-          ),
-        );
-      } else {
-        finalize(
-          new AppError(`Error al ejecutar wkhtmltopdf: ${error.message}`, 500, 'PDF_RENDER_FAILED'),
-        );
-      }
+      child.on('error', (error) => {
+        if (error.code === 'ENOENT') {
+          finalize(
+            new AppError(
+              `No se encontró el ejecutable de wkhtmltopdf ("${config.pdf.wkhtmltopdfPath}"). Instálalo o define WKHTMLTOPDF_PATH.`,
+              500,
+              'PDF_PROVIDER_UNAVAILABLE',
+            ),
+          );
+        } else {
+          finalize(
+            new AppError(`Error al ejecutar wkhtmltopdf: ${error.message}`, 500, 'PDF_RENDER_FAILED'),
+          );
+        }
+      });
+
+      child.stderr.on('data', (chunk) => stderr.push(chunk));
+
+      child.on('close', (code) => {
+        if (code !== 0) {
+          const detail = Buffer.concat(stderr).toString('utf8').slice(0, 500);
+          finalize(
+            new AppError(
+              `wkhtmltopdf terminó con código ${code}: ${detail}`,
+              500,
+              'PDF_RENDER_FAILED',
+            ),
+          );
+          return;
+        }
+        readFile(outPath)
+          .then((buffer) => finalize(null, buffer))
+          .catch((error) =>
+            finalize(
+              new AppError(
+                `No se pudo leer el PDF generado: ${error.message}`,
+                500,
+                'PDF_RENDER_FAILED',
+              ),
+            ),
+          );
+      });
+
+      child.stdin.on('error', () => {});
+      child.stdin.end(html, 'utf8');
     });
-
-    child.stdout.on('data', (chunk) => stdout.push(chunk));
-    child.stderr.on('data', (chunk) => stderr.push(chunk));
-
-    child.on('close', (code) => {
-      if (code === 0) {
-        finalize(null, Buffer.concat(stdout));
-      } else {
-        const detail = Buffer.concat(stderr).toString('utf8').slice(0, 500);
-        finalize(
-          new AppError(
-            `wkhtmltopdf terminó con código ${code}: ${detail}`,
-            500,
-            'PDF_RENDER_FAILED',
-          ),
-        );
-      }
-    });
-
-    child.stdin.on('error', () => {});
-    child.stdin.end(html, 'utf8');
-  });
+  } finally {
+    await rm(workDir, { recursive: true, force: true }).catch(() => {});
+  }
 }
 
 async function renderWithGotenberg(html) {
