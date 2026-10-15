@@ -38,3 +38,12 @@ export async function getStringSetting(key, fallback = null) {
   const value = await getSetting(key);
   return value === null || value === undefined ? fallback : String(value);
 }
+
+/** Crea o actualiza una configuración (upsert por `key`). */
+export async function setSetting(key, value) {
+  await Setting.upsert({
+    key,
+    value: value === null || value === undefined ? null : String(value),
+    description: null,
+  });
+}

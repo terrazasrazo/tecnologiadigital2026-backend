@@ -27,7 +27,7 @@ usersRouter.post(
 usersRouter.get(
   '/',
   authenticate,
-  authorize(ROLE_NAMES.admin),
+  authorize(ROLE_NAMES.admin, ROLE_NAMES.organizador),
   validate(listUsersQuerySchema, 'query'),
   controller.list,
 );
@@ -38,7 +38,7 @@ usersRouter.post(
   validate(adminCreateUserSchema),
   controller.create,
 );
-usersRouter.get('/:id', authenticate, authorize(ROLE_NAMES.admin), controller.detail);
+usersRouter.get('/:id', authenticate, authorize(ROLE_NAMES.admin, ROLE_NAMES.organizador), controller.detail);
 usersRouter.patch(
   '/:id',
   authenticate,
