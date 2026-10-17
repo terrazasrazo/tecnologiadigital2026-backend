@@ -14,7 +14,14 @@ export function createApp() {
   app.disable('x-powered-by');
   app.set('trust proxy', 1);
 
-  app.use(helmet());
+  app.use(
+    helmet({
+      // La API y sus archivos públicos (fotografías de ponentes) se consumen
+      // desde el frontend, que corre en otro origen; con el default
+      // `same-origin` Chromium bloquea la carga de las imágenes.
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+    }),
+  );
 
   app.use(
     cors({
