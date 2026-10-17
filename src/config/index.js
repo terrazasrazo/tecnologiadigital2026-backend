@@ -1,17 +1,30 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
 import { parseDuration } from '../utils/duration.js';
+
+// Carga las variables de entorno: primero las específicas del entorno
+// (`.env.production`, `.env.test`, …) y después `.env` como base. La primera
+// coincidencia gana y nunca se sobrescriben variables ya definidas en el
+// sistema operativo.
+const env = process.env.NODE_ENV || 'development';
+dotenv.config({ path: [`.env.${env}`, '.env'], quiet: true });
 
 const toNumber = (value, fallback) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const toBasePath = (value) => {
+  const trimmed = String(value ?? '')
+    .trim()
+    .replace(/\/+$/, '');
+  if (!trimmed || trimmed === '/') return '';
+  return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+};
+
 const toBoolean = (value, fallback = false) => {
   if (value === undefined) return fallback;
   return ['1', 'true', 'yes', 'on'].includes(String(value).toLowerCase());
 };
-
-const env = process.env.NODE_ENV || 'development';
 
 const corsOrigins = (process.env.CORS_ORIGINS || '')
   .split(',')
@@ -27,6 +40,8 @@ export const config = {
   env,
   isProduction: env === 'production',
   isTest: env === 'test',
+  /** Prefijo público bajo el que se sirve la API (p. ej. `/td2026`). Vacío en la raíz. */
+  basePath: toBasePath(process.env.BASE_PATH),
   port: toNumber(process.env.PORT, 3000),
   host: process.env.HOST || '0.0.0.0',
   logLevel: process.env.LOG_LEVEL || (env === 'production' ? 'info' : 'debug'),

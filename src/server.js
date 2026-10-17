@@ -23,7 +23,9 @@ async function start() {
   const app = createApp();
 
   const server = app.listen(config.port, config.host, () => {
-    logger.info(`Servidor escuchando en http://${config.host}:${config.port} (${config.env})`);
+    logger.info(
+      `Servidor escuchando en http://${config.host}:${config.port}${config.basePath} (${config.env})`,
+    );
   });
 
   let shuttingDown = false;

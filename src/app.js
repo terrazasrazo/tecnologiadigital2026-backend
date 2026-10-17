@@ -34,7 +34,9 @@ export function createApp() {
   app.use(express.json({ limit: '1mb' }));
   app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
-  app.use(pinoHttp({ logger, autoLogging: { ignore: (req) => req.url === '/health' } }));
+  app.use(
+    pinoHttp({ logger, autoLogging: { ignore: (req) => req.url === `${config.basePath}/health` } }),
+  );
 
   app.use(
     storage.publicPath,
@@ -44,7 +46,7 @@ export function createApp() {
     }),
   );
 
-  app.use(routes);
+  app.use(config.basePath || '/', routes);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

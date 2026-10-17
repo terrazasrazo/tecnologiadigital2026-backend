@@ -2,12 +2,16 @@ import path from 'node:path';
 import fs from 'node:fs';
 import fsPromises from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
+import { config } from '../config/index.js';
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(currentDir, '..', '..');
 
 const uploadsDir = path.resolve(projectRoot, process.env.UPLOADS_DIR || 'storage/uploads');
-const publicPath = (process.env.UPLOADS_PUBLIC_PATH || '/uploads').replace(/\/$/, '');
+const publicPath = `${config.basePath}${(process.env.UPLOADS_PUBLIC_PATH || '/uploads').replace(
+  /\/$/,
+  '',
+)}`;
 
 fs.mkdirSync(uploadsDir, { recursive: true });
 
