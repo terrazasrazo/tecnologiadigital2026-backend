@@ -71,11 +71,76 @@ npm run dev
 
 Verifica que el servicio responde en el endpoint de salud: `GET /health`.
 
+## Despliegue bajo un subdirectorio
+
+El backend está configurado para publicarse en **https://lat.bunam.unam.mx/td2026** (esa URL es la
+del **backend**, no la del frontend). La variable `BASE_PATH` antepone el prefijo a **todas** las
+rutas del servicio:
+
+| Recurso                 | URL pública                                    |
+| ----------------------- | ---------------------------------------------- |
+| Salud                   | `https://lat.bunam.unam.mx/td2026/health`      |
+| API REST                | `https://lat.bunam.unam.mx/td2026/api/...`     |
+| Fotografías de ponentes | `https://lat.bunam.unam.mx/td2026/uploads/...` |
+
+Variables de entorno relacionadas (ver `.env.example`):
+
+| Variable       | Valor                                                         |
+| -------------- | ------------------------------------------------------------- |
+| `BASE_PATH`    | `/td2026` (prefijo bajo el que se sirve **este backend**)     |
+| `FRONTEND_URL` | URL pública del **frontend** (Astro), para enlaces de correos |
+| `CORS_ORIGINS` | Origen(es) del **frontend** separados por coma; vacío = todos |
+
+### Proxy inverso
+
+El proxy inverso (Apache/nginx) **debe reenviar la ruta completa, sin quitar el prefijo
+`/td2026`**, hacia el puerto del backend (`PORT`, por defecto `3000`). Del lado del backend el
+prefijo ya se aplica con `BASE_PATH`, por lo que no debe duplicarse ni eliminarse.
+
+Ejemplo con **nginx**:
+
+```nginx
+location /td2026/ {
+    proxy_pass http://127.0.0.1:3000;   # conserva /td2026/...
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    client_max_body_size 10m;           # subida de fotografías
+}
+```
+
+Ejemplo con **Apache** (mod_proxy):
+
+```apache
+ProxyPreserveHost On
+ProxyPass        /td2026/ http://127.0.0.1:3000/td2026/
+ProxyPassReverse /td2026/ http://127.0.0.1:3000/td2026/
+```
+
+> Si el proxy **elimina** el prefijo antes de reenviar (por ejemplo con
+> `ProxyPass /td2026/ http://127.0.0.1:3000/`), deja `BASE_PATH` vacío para no duplicar el
+> subdirectorio: el backend se serviría en la raíz del proxy.
+
+### Consideraciones
+
+- **Frontend (Astro)**: apunta su `API_BASE_URL` al backend ya prefijado, p. ej.
+  `https://lat.bunam.unam.mx/td2026` (o `http://127.0.0.1:3000/td2026` si el frontend consume la
+  API por red interna). Si el propio sitio se publica en un subdirectorio, ajusta además su `base`
+  en `astro.config.mjs`.
+- **Carga tras cambios de `.env`**: `BASE_PATH`, `FRONTEND_URL` y `CORS_ORIGINS` se leen al
+  arrancar; reinicia el proceso para aplicarlos.
+- **Variables por entorno**: además de `.env`, se carga `.env.<NODE_ENV>` (p. ej.
+  `.env.production`). Las variables definidas en el sistema operativo tienen prioridad sobre
+  cualquier archivo.
+
 ## Endpoints
 
 ### Convenciones
 
-- **URL base**: todas las rutas de la API cuelgan de `/api/*`, salvo `GET /health`.
+- **URL base**: todas las rutas de la API cuelgan de `/api/*`, salvo `GET /health`. Bajo el
+  despliegue actual todas llevan el prefijo `BASE_PATH` (`/td2026`), p. ej.
+  `https://lat.bunam.unam.mx/td2026/api/auth/login`.
 - **Autenticación**: envía el token de acceso en la cabecera
   `Authorization: Bearer <accessToken>`. Los roles admitidos se indican por endpoint.
 - **Cuerpo y respuestas**: `Content-Type: application/json` (salvo la subida de fotografía, que
@@ -277,6 +342,38 @@ Objeto de constancia: `{ "id", "userId", "code", "issuedAt", "talksCount", "hour
   `CERTIFICATE_FILE_MISSING` (404), `FORBIDDEN` (403).
 - **`GET /verify/:code`** → verificación pública: `{ "valid": true, "code", "holder", "talksCount", "hoursTotal", "issuedAt" }`.
   Error: `CERTIFICATE_NOT_FOUND` (404).
+
+### Configuración (`/api/settings`)
+
+| Método  | Ruta            | Acceso |
+| ------- | --------------- | ------ |
+| `GET`   | `/api/settings` | admin  |
+| `PATCH` | `/api/settings` | admin  |
+
+Umbral de elegibilidad de constancias: `{ "certificate": { "metric": "talks|hours|both", "minTalks", "minHours" } }`.
+
+- **`GET /`** → configuración actual.
+- **`PATCH /`** — Body: `metric?`, `minTalks?`, `minHours?` (al menos uno). → configuración actualizada.
+
+### Estadísticas (`/api/stats`)
+
+| Método | Ruta         | Acceso |
+| ------ | ------------ | ------ |
+| `GET`  | `/api/stats` | admin  |
+
+`GET /stats` → resumen para el panel de administración:
+
+```json
+{
+  "users": { "total", "active", "pending", "inactive", "byRole": [], "byEntity": [], "byEducationLevel": [] },
+  "speakers": { "total": 0 },
+  "locations": { "total": 0 },
+  "talks": { "total": 0, "byStatus": [] },
+  "certificates": { "total": 0 },
+  "attendance": { "registered", "attended", "rate" },
+  "perTalk": [ { "id", "title", "date", "startTime", "endTime", "status", "registered", "attended" } ]
+}
+```
 
 ### Códigos de error
 
