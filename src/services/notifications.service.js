@@ -2,7 +2,7 @@ import { config } from '../config/index.js';
 import { sendMailSafe } from './mailer.service.js';
 
 export function sendVerificationEmail(user, token) {
-  const url = `${config.frontendUrl}/verify-email?token=${encodeURIComponent(token)}`;
+  const url = `${config.frontendUrl}/auth/verify-email?token=${encodeURIComponent(token)}`;
 
   return sendMailSafe({
     to: user.email,
@@ -13,7 +13,7 @@ export function sendVerificationEmail(user, token) {
 }
 
 export function sendPasswordResetEmail(user, token) {
-  const url = `${config.frontendUrl}/reset-password?token=${encodeURIComponent(token)}`;
+  const url = `${config.frontendUrl}/auth/reset-password?token=${encodeURIComponent(token)}`;
 
   return sendMailSafe({
     to: user.email,

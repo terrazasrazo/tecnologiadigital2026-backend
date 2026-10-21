@@ -410,5 +410,3 @@ El plan de acción completo, el modelo de datos y los milestones están en
 
 Este proyecto se distribuye bajo la licencia **GNU General Public License v3.0**. Consulta el
 archivo [`LICENSE`](./LICENSE).
-
-opencode -s ses_ed20601a0ffeXdIXIOXxnTJ2dE

@@ -12,6 +12,33 @@ const templatesDir = path.join(emailsDir, 'templates');
 const layoutsDir = path.join(emailsDir, 'layouts');
 
 let transporter = null;
+let warnedTransportConfig = false;
+
+/**
+ * Detecta la combinación puerto/`secure` inválida antes de que nodemailer falle
+ * con un error criptíco (ESOCKET "wrong version number").
+ */
+function warnIfTransportMisconfigured() {
+  if (warnedTransportConfig || !config.email.host) {
+    return;
+  }
+  warnedTransportConfig = true;
+
+  const { host, port, secure } = config.email;
+
+  if (secure && (port === 587 || port === 25)) {
+    logger.warn(
+      { host, port, secure },
+      'SMTP_SECURE=true con puerto STARTTLS: nodemailer espera TLS implícito y la ' +
+        'conexión fallará. Usa SMTP_PORT=465 con SMTP_SECURE=true, o SMTP_PORT=587 con SMTP_SECURE=false.',
+    );
+  } else if (!secure && port === 465) {
+    logger.warn(
+      { host, port, secure },
+      'SMTP_PORT=465 requiere SMTP_SECURE=true (TLS implícito) o la conexión fallará.',
+    );
+  }
+}
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -25,6 +52,7 @@ function getTransporter() {
   }
 
   if (config.email.host) {
+    warnIfTransportMisconfigured();
     transporter = nodemailer.createTransport({
       host: config.email.host,
       port: config.email.port,

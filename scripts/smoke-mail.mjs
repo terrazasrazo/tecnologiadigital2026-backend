@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable no-console -- script CLI: su salida es consola por diseño */
 /**
  * Prueba de humo del correo saliente.
  *
@@ -38,6 +39,34 @@ if (!config.email.host) {
     '\n✗ SMTP_HOST está vacío: nodemailer usa jsonTransport y los correos solo ' +
       'se escriben en el log. Revisa .env / .env.' + config.env,
   );
+  process.exit(2);
+}
+
+const starttlsOnlyPorts = new Set([587, 25]);
+const implicitTlsPorts = new Set([465]);
+let configError = false;
+
+if (config.email.secure && starttlsOnlyPorts.has(config.email.port)) {
+  console.error(
+    `\n✗ Configuración inválida: SMTP_SECURE=true con puerto ${config.email.port} (STARTTLS).`,
+  );
+  console.error(
+    '  nodemailer espera TLS implícito y falla con ESOCKET "wrong version number".',
+  );
+  console.error(
+    '  Corrige el .env a: SMTP_PORT=465 + SMTP_SECURE=true,  o  SMTP_PORT=587 + SMTP_SECURE=false.\n',
+  );
+  configError = true;
+}
+
+if (!config.email.secure && implicitTlsPorts.has(config.email.port)) {
+  console.error(
+    `\n✗ Configuración inválida: SMTP_PORT=465 requiere SMTP_SECURE=true (TLS implícito).\n`,
+  );
+  configError = true;
+}
+
+if (configError) {
   process.exit(2);
 }
 
