@@ -33,6 +33,13 @@ attendanceRouter.get(
 );
 
 attendanceRouter.post(
+  '/talks/:talkId/qr/email',
+  authenticate,
+  authorize(ROLE_NAMES.admin, ROLE_NAMES.organizador),
+  controller.emailQr,
+);
+
+attendanceRouter.post(
   '/talks/:talkId/checkin',
   authenticate,
   validate(checkInSchema),

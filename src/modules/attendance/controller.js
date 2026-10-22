@@ -28,6 +28,11 @@ export async function qr(req, res) {
   res.status(200).json(result);
 }
 
+export async function emailQr(req, res) {
+  const result = await attendanceService.emailTalkQrToSpeakers(req.params.talkId);
+  res.status(200).json(result);
+}
+
 export async function checkIn(req, res) {
   const result = await attendanceService.checkIn(req.params.talkId, req.user.id, req.body.token);
   res.status(200).json(result);

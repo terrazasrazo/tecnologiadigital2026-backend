@@ -11,8 +11,10 @@ import { SETTING_KEYS } from '../../db/models/setting.js';
 import { signTalkToken, verifyTalkToken } from '../../utils/jwt.js';
 import { toDateTime, addMinutes } from '../../utils/time.js';
 import { getNumberSetting } from '../../services/settings.service.js';
+import { sendMailSafe } from '../../services/mailer.service.js';
 import { config } from '../../config/index.js';
 import { AppError } from '../../middlewares/error.js';
+import QRCode from 'qrcode';
 
 function serializeTalkSummary(talk) {
   if (!talk) return null;
@@ -172,6 +174,62 @@ export async function getTalkQr(talkId) {
     opensAt: window.opensAt.toISOString(),
     closesAt: window.closesAt.toISOString(),
   };
+}
+
+/**
+ * Envía el QR de asistencia de la ponencia por correo a los ponentes
+ * asociados (a las cuentas de usuario vinculadas). Devuelve cuántos
+ * correos se enviaron de entre los destinatarios posibles.
+ */
+export async function emailTalkQrToSpeakers(talkId) {
+  const talk = await findTalkOrFail(talkId);
+  if (!talk.qrSecret) {
+    await talk.update({ qrSecret: crypto.randomBytes(24).toString('hex') });
+  }
+
+  const speakers = await talk.getSpeakers();
+  const userIds = [...new Set(speakers.map((speaker) => speaker.userId).filter(Boolean))];
+  const users = userIds.length
+    ? await User.findAll({ where: { id: userIds }, attributes: ['id', 'email'] })
+    : [];
+  const emails = [...new Set(users.map((user) => user.email).filter(Boolean))];
+  if (emails.length === 0) {
+    throw new AppError(
+      'La ponencia no tiene ponentes con correo electrónico asociado',
+      400,
+      'SPEAKERS_WITHOUT_EMAIL',
+    );
+  }
+
+  const token = signTalkToken(talk);
+  const png = await QRCode.toBuffer(token, {
+    width: 320,
+    margin: 2,
+    color: { dark: '#0f172a', light: '#ffffff' },
+  });
+  const context = {
+    talkTitle: talk.title,
+    talkDate: talk.date,
+    talkTime: `${String(talk.startTime).slice(0, 5)}–${String(talk.endTime).slice(0, 5)}`,
+  };
+
+  let sent = 0;
+  for (const email of emails) {
+    const info = await sendMailSafe({
+      to: email,
+      subject: `Código de asistencia — ${talk.title}`,
+      template: 'talk-qr',
+      context,
+      attachments: [
+        { filename: `qr-asistencia-ponencia-${talk.id}.png`, content: png, cid: 'qr' },
+      ],
+    });
+    if (info) {
+      sent += 1;
+    }
+  }
+
+  return { sent, recipients: emails.length };
 }
 
 export async function checkIn(talkId, userId, token) {

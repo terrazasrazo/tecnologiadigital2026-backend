@@ -299,6 +299,7 @@ Objeto de ponencia: `{ "id", "title", "description", "date", "startTime", "endTi
 | `DELETE` | `/api/attendance/talks/:talkId/register`      | Auth              |
 | `GET`    | `/api/attendance/talks/:talkId/registrations` | admin/organizador |
 | `GET`    | `/api/attendance/talks/:talkId/qr`            | admin/organizador |
+| `POST`   | `/api/attendance/talks/:talkId/qr/email`      | admin/organizador |
 | `POST`   | `/api/attendance/talks/:talkId/checkin`       | Auth              |
 | `POST`   | `/api/attendance/talks/:talkId/attendance`    | admin/organizador |
 
